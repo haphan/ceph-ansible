@@ -520,6 +520,21 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         end
         lv.memory = MEMORY
         lv.random_hostname = true
+
+        # test the machine we are running on as an nvme drive
+        # if so, then we expose it inside the guess using a PCI device passthrough
+        system("
+          if lspci | grep -sq 'Non-Volatile memory controller: Intel Corporation PCIe Data Center SSD'; then
+            export NVME_DISK_PRESENT=1
+          fi
+        ")
+        # only do the passthrough on first OSD virtual machine
+        if i == "0"
+          if ENV.has_key?('NVME_DISK_PRESENT')
+            # on our CI machines all the NVMEs have the same PCI slot 02:00.0
+            libvirt.pci :bus => '0x02', :slot => '0x00', :function => '0x0'
+          end
+        end
       end
 
       # Parallels
